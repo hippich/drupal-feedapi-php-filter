@@ -1,0 +1,77 @@
+<?php
+// $Id$
+
+/**
+ * @file
+ * FeedAPI PHP Filter module
+ *
+ * This is filtering module for FeedAPI Item Filter module.
+ * The module provide a way to filter/modify feed with custom PHP code.
+ *
+ */
+
+
+/**
+ * Implementation of hook_feedapi_itemfilter()
+ *
+ * @param string $op
+ *    $op = 'settings' will modify FeedAPI item filter settings page. You can define
+ *           the form for any filter-specific settings here.
+ *    $op = 'process' will process the feed with your filter.
+ * @param array $feed
+ *    This is feed array, which was returned from parsers. It is used under 'process' stage
+ * @param array $options
+ *    Array of FeedAPI options. It includes the filter options that you required
+ *           when the 'settings' page was altered.
+ * @return  if $op = 'settings' then the form array for filter settings is returned
+ *          if $op = 'process' then nothing is returned: it is expected that you
+ *                    modified feed->items directly in your code (see line 116 below).
+ */
+function feedapi_php_filter_feedapi_itemfilter($op, &$feed, &$options) {
+  switch ($op) {
+    // Prepare settings for the filter.
+    case 'settings':
+      $form = array();
+
+      $form['info'] = array(
+        '#type' => 'item',
+        '#description' => t('PHP Filter allow to run custom PHP code against $feed variable in order to filter/modify value(s) of item(s).'),
+        '#weight' => -15,
+      );
+
+      $form['phpcode'] = array(
+        '#type' => 'textarea',
+        '#title' => t('PHP Code'),
+        '#default_value' => $node_type_settings['feedapi']['itemfilter']['phpcode'],
+        '#attributes' => '',
+        '#description' => t("Do not use &lt;?php ?&gt;. Feed structure available in \$feed variable. Items - \$feed->items. Just change it's content with some custom PHP code."),
+      );
+
+      $node = node_load(arg(1));
+
+      if ($merged_item = _feedapi_mapper_get_items_merged($node)) {
+        $merged_item = _feedapi_mapper_simplify_raw($merged_item, $node->feed->parsers);
+        
+        $form['example'] = array(
+          '#type'         => 'fieldset',
+          '#collapsible'  => TRUE,
+          '#collapsed'    => TRUE,
+          '#title'        => t("Feed Item example"),
+        );
+
+        $form['example']['item'] = array(
+          '#type'   => 'markup',
+          '#value'  => '<pre>'. check_plain(print_r(_feedapi_mapper_truncate_array($merged_item), TRUE)) .'</pre>',
+        );
+      }
+
+      return $form;
+
+    // Process the items.
+    case 'process':
+      if(!empty($options['phpcode'])) { 
+        eval($options['phpcode']);
+      }
+      break;
+  }
+}
