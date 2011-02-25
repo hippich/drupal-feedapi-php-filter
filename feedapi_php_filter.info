@@ -1,4 +1,3 @@
-; $Id$
 name = FeedAPI PHP filter
 description = "Filters feed items with custom PHP code."
 core = 6.x
